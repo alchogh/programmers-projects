@@ -71,6 +71,8 @@ const passwordResetRequest = (req, res) => {
 		if (err) {
 			return res.status(StatusCodes.BAD_REQUEST).end();
 		}
+
+		//유저가 있는지 확인
 		const user = results[0];
 		if (user) {
 			return res.status(StatusCodes.OK).json({ email });
@@ -83,8 +85,15 @@ const passwordResetRequest = (req, res) => {
 //비밀번호 초기화
 const passwordReset = (req, res) => {
 	const { email, password } = req.body;
-	let sql = "UPDATE users SET password = ? WHERE email = ?";
-	let values = [password, email];
+
+	let sql = "UPDATE users SET password = ?, salt = ? WHERE email = ?";
+
+	const salt = crypto.randomBytes(10).toString("base64");
+	const hashPassword = crypto
+		.pbkdf2Sync(password, salt, 10000, 10, "sha512")
+		.toString("base64");
+
+	let values = [hashPassword, salt, email];
 	conn.query(sql, values, (error, results) => {
 		if (error) {
 			return res.status(StatusCodes.BAD_REQUEST).end();
