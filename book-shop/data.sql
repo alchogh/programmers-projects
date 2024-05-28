@@ -29,3 +29,9 @@ SELECT *,
 	(SELECT count(*) FROM likes WHERE liked_book_id=books.id) AS likes,
  (SELECT EXISTS (SELECT * FROM likes WHERE user_id =1 AND liked_book_id=1)) AS liked FROM books WHERE books.id=1;
 
+//장바구니
+INSERT INTO cartItems (book_id, quantity, user_id) VALUES (1,1,1);
+
+SELECT * FROM Bookshop.cartItems
+WHERE user_id =1
+AND id IN (1,3);
