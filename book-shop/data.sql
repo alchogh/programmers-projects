@@ -35,3 +35,7 @@ INSERT INTO cartItems (book_id, quantity, user_id) VALUES (1,1,1);
 SELECT * FROM Bookshop.cartItems
 WHERE user_id =1
 AND id IN (1,3);
+
+
+주소
+INSERT INTO Bookshop.delivery (address, receiver, contact) VALUES('서울시 중구', '조건호', '010-1234-1234')
