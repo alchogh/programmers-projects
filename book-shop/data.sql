@@ -39,3 +39,5 @@ AND id IN (1,3);
 
 주소
 INSERT INTO Bookshop.delivery (address, receiver, contact) VALUES('서울시 중구', '조건호', '010-1234-1234')
+
+DELETE FROM cartItems WHERE id IN(1,2,3)

@@ -1,7 +1,16 @@
-const conn = require("../mariadb");
+// const conn = require("../mariadb");
+const mariadb = require("mysql2/promise");
 const { StatusCodes } = require("http-status-codes");
 
-const order = (req, res) => {
+const order = async (req, res) => {
+	const conn = await mariadb.createConnection({
+		host: "localhost",
+		user: "root",
+		password: "root",
+		database: "Bookshop",
+		dateStrings: true,
+	});
+
 	const { items, delivery, totalQuantity, totalPrice, userId, firstBookTitle } =
 		req.body;
 	let delivery_id;
@@ -9,47 +18,67 @@ const order = (req, res) => {
 
 	let sql = "INSERT INTO delivery (address, receiver, contact) VALUES(?,?,?)";
 	let values = [delivery.address, delivery.receiver, delivery.contact];
-	conn.query(sql, values, (err, results) => {
-		if (err) {
-			return res.status(StatusCodes.BAD_REQUEST).end();
-		}
-		delivery_id = results.insert_id;
+	[results] = await conn.execute(sql, values);
+	delivery_id = results.insertId;
 
-		res.status(StatusCodes.OK).json(results);
-	});
-
+	//orders 테이블 삽입
 	sql =
 		"INSERT INTO orders (book_title, total_quantity, total_price, user_id, delivery_id) VALUES(?,?,?,?,?)";
 	values = [firstBookTitle, totalQuantity, totalPrice, userId, delivery_id];
-	conn.query(sql, values, (err, results) => {
-		if (err) {
-			return res.status(StatusCodes.BAD_REQUEST).end();
-		}
-		order_id = results.insert_id;
+	[results] = await conn.execute(sql, values);
+	order_id = results.insertId;
 
-		res.status(StatusCodes.OK).json(results);
-	});
+	//select book_id, quantity FROM cartItems WHERE IN [1,2,3];
+	sql = "SELECT book_id, quantity FROM cartItems WHERE id IN (?)  ";
+	let [orderItems, fields] = await conn.query(sql, [items]);
 
+	//orderedBook 테이블 삽입
 	sql = "INSERT INTO orderedBook (order_id, book_id, quantity) VALUES ?";
 	values = [];
-	items.forEach((item) => {
+	orderItems.forEach((item) => {
 		values = [...values, [order_id, item.book_id, item.quantity]];
 	});
-	conn.query(sql, [values], (err, results) => {
-		if (err) {
-			return res.status(StatusCodes.BAD_REQUEST).end();
-		}
+	[results] = await conn.query(sql, [values]);
+	let result = await deleteCartItems(conn, items);
+	return res.status(StatusCodes.OK).json(result);
+};
 
-		return res.status(StatusCodes.OK).json(results);
+const deleteCartItems = async (conn, items) => {
+	let sql = "DELETE FROM cartItems WHERE id IN(?)";
+
+	let result = await conn.query(sql, [items]);
+	return result;
+};
+
+const getOrders = async (req, res) => {
+	const conn = await mariadb.createConnection({
+		host: "localhost",
+		user: "root",
+		password: "root",
+		database: "Bookshop",
+		dateStrings: true,
 	});
+	let sql = `SELECT orders.id,created_at, address, receiver,contact, 
+            book_title, total_quantity, total_price ,
+            FROM orders LEFT JOIN delivery
+            ON orders.delivery_id = delivery.id;`;
 };
 
-const getOrders = (req, res) => {
-	res("주문");
-};
-
-const getOrderDetail = (req, res) => {
-	res("주문");
+const getOrderDetail = async (req, res) => {
+	const { id } = req.params;
+	const conn = await mariadb.createConnection({
+		host: "localhost",
+		user: "root",
+		password: "root",
+		database: "Bookshop",
+		dateStrings: true,
+	});
+	let sql = `SELECT book_id, title, author, price, quantity 
+            FROM orderedBook LEFT JOIN books
+            ON orderedBook.book_id = books.id
+            WHERE order_id = ?`;
+	let [rows, field] = await conn.query(sql, [id]);
+	return res.status(StatusCodes.OK).json(rows);
 };
 
 module.exports = {
